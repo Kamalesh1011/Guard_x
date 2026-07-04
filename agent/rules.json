@@ -1,0 +1,163 @@
+{
+  "rules": [
+    {
+      "id": "R001",
+      "name": "Word spawning CMD",
+      "event_type": "UNKNOWN_PROCESS",
+      "condition": {
+        "parent_name": "winword.exe",
+        "child_name": "cmd.exe"
+      },
+      "severity": "CRITICAL",
+      "explanation": "Microsoft Word launched a command shell. This is a classic malware macro execution pattern.",
+      "recommendation": "Immediately terminate this process. Check for macro-enabled documents."
+    },
+    {
+      "id": "R002",
+      "name": "Word spawning PowerShell",
+      "event_type": "UNKNOWN_PROCESS",
+      "condition": {
+        "parent_name": "winword.exe",
+        "child_name": "powershell.exe"
+      },
+      "severity": "CRITICAL",
+      "explanation": "Microsoft Word launched PowerShell. Macros may be executing encoded commands.",
+      "recommendation": "Terminate the PowerShell process and disable macros in Word."
+    },
+    {
+      "id": "R003",
+      "name": "Excel spawning CMD",
+      "event_type": "UNKNOWN_PROCESS",
+      "condition": {
+        "parent_name": "excel.exe",
+        "child_name": "cmd.exe"
+      },
+      "severity": "CRITICAL",
+      "explanation": "Microsoft Excel launched a command shell. Possible macro-based attack.",
+      "recommendation": "Terminate the process and review Excel macros."
+    },
+    {
+      "id": "R004",
+      "name": "Unsigned temp executable",
+      "event_type": "UNKNOWN_PROCESS",
+      "condition": {
+        "is_unsigned": true,
+        "from_temp": true
+      },
+      "severity": "HIGH",
+      "explanation": "An unsigned executable is running from a temporary folder. This is a common malware staging pattern.",
+      "recommendation": "Terminate the process and scan with antivirus."
+    },
+    {
+      "id": "R005",
+      "name": "Unsigned with suspicious parent",
+      "event_type": "UNKNOWN_PROCESS",
+      "condition": {
+        "is_unsigned": true,
+        "parent_child_pair": true
+      },
+      "severity": "HIGH",
+      "explanation": "An unsigned process was spawned by an unexpected parent. This indicates possible process injection.",
+      "recommendation": "Investigate the parent-child relationship in Task Manager."
+    },
+    {
+      "id": "R006",
+      "name": "Suspicious port connection",
+      "event_type": "NETWORK_SUSPICIOUS",
+      "condition": {
+        "is_suspicious_port": true
+      },
+      "severity": "HIGH",
+      "explanation": "Connection to a port commonly used by attack frameworks (Metasploit, Cobalt Strike, etc.).",
+      "recommendation": "Block this process in Windows Firewall immediately."
+    },
+    {
+      "id": "R007",
+      "name": "Foreign IP connection",
+      "event_type": "NETWORK_SUSPICIOUS",
+      "condition": {
+        "is_foreign_ip": true
+      },
+      "severity": "MEDIUM",
+      "explanation": "A process is connecting to an IP address outside your local network.",
+      "recommendation": "Verify the connection is expected. Block if unauthorized."
+    },
+    {
+      "id": "R008",
+      "name": "Camera background access",
+      "event_type": "CAMERA_ACCESS",
+      "condition": {
+        "is_background": true
+      },
+      "severity": "HIGH",
+      "explanation": "The camera was activated while the application was running in the background.",
+      "recommendation": "If you did not start a video call, terminate the process."
+    },
+    {
+      "id": "R009",
+      "name": "Unknown camera access",
+      "event_type": "CAMERA_ACCESS",
+      "condition": {
+        "is_first_time": true
+      },
+      "severity": "MEDIUM",
+      "explanation": "This application has never accessed your camera before.",
+      "recommendation": "Verify this is a legitimate application you recently installed."
+    },
+    {
+      "id": "R010",
+      "name": "Ransomware file burst",
+      "event_type": "RANSOMWARE_BURST",
+      "condition": {
+        "events_per_3s": 10
+      },
+      "severity": "CRITICAL",
+      "explanation": "Over 10 files were modified in 3 seconds with ransomware-associated extensions. This is a strong indicator of active encryption.",
+      "recommendation": "Disconnect from network immediately. Do not restart. Isolate the machine."
+    },
+    {
+      "id": "R011",
+      "name": "Ransomware extension detected",
+      "event_type": "RANSOMWARE_BURST",
+      "condition": {
+        "has_ransomware_ext": true
+      },
+      "severity": "CRITICAL",
+      "explanation": "A file with a known ransomware extension was detected. Ransomware may be encrypting your files.",
+      "recommendation": "Disconnect from network. Do not pay the ransom. Contact IT support."
+    },
+    {
+      "id": "R012",
+      "name": "System directory modification",
+      "event_type": "RANSOMWARE_BURST",
+      "condition": {
+        "is_system_dir": true
+      },
+      "severity": "HIGH",
+      "explanation": "Files in a Windows system directory were modified. This may indicate tampering.",
+      "recommendation": "Run System File Checker (sfc /scannow) and review recent changes."
+    },
+    {
+      "id": "R013",
+      "name": "Anomalous idle activity",
+      "event_type": "IDLE_ANOMALY",
+      "condition": {
+        "cpu_vs_baseline": 2.0
+      },
+      "severity": "MEDIUM",
+      "explanation": "CPU usage during idle is 2x higher than baseline. Unknown processes may be active.",
+      "recommendation": "Check Task Manager for unexpected high-CPU processes."
+    },
+    {
+      "id": "R014",
+      "name": "Unknown process during idle",
+      "event_type": "IDLE_ANOMALY",
+      "condition": {
+        "unknown_proc_count": 3
+      },
+      "severity": "HIGH",
+      "explanation": "Multiple unknown processes are active while the system is idle.",
+      "recommendation": "Review running processes and terminate anything suspicious."
+    }
+  ]
+}
