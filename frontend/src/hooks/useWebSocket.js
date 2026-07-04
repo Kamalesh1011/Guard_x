@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-export function useWebSocket(url) {
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8001'
+
+export function useWebSocket(path = '/ws') {
   const [messages, setMessages] = useState([])
   const [isConnected, setIsConnected] = useState(false)
   const ws = useRef(null)
@@ -8,7 +10,7 @@ export function useWebSocket(url) {
 
   const connect = useCallback(() => {
     try {
-      ws.current = new WebSocket(url)
+      ws.current = new WebSocket(`${WS_BASE}${path}`)
 
       ws.current.onopen = () => {
         setIsConnected(true)

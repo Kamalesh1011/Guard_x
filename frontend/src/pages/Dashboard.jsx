@@ -10,7 +10,7 @@ import { Shield, Wifi, WifiOff } from 'lucide-react'
 export default function Dashboard() {
   const [status, setStatus] = useState(null)
   const [alerts, setAlerts] = useState([])
-  const { messages, isConnected } = useWebSocket('ws://127.0.0.1:8001/ws/events')
+  const { messages, isConnected } = useWebSocket('/ws/events')
 
   useEffect(() => {
     api.getStatus().then(setStatus).catch(console.error)
