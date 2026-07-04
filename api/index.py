@@ -422,13 +422,13 @@ class handler(BaseHTTPRequestHandler):
             result = process_event("hardware", {"type": "CAMERA_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": False, "is_signed": True, "app_is_known": False, "features": {"is_first_time": 1.0, "is_background": 0.0, "is_signed": 1.0, "app_is_known": 0.0}})
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/simulate/mic":
-            result = process_event("hardware", {"type": "MIC_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": True, "is_signed": True, "app_is_known": False, "features": {"is_first_time": 1.0, "is_background": 1.0, "is_signed": 1.0, "app_is_known": 0.0}})
+            result = process_event("hardware", {"type": "MIC_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": True, "is_signed": True, "app_is_known": False, "watcher": "HardwareWatcher", "features": {"is_first_time": 1.0, "is_background": 1.0, "is_signed": 1.0, "app_is_known": 0.0}})
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/simulate/process":
             result = process_event("process", {"type": "PROCESS_SUSPICIOUS", "process_name": body.get("name", "malware.exe"), "pid": body.get("pid", 0), "is_unsigned": True, "from_temp": True, "parent_child_pair": True, "features": {"is_first_time": 1.0, "is_background": 1.0, "is_signed": 0.0, "thread_count": 0.8, "memory_usage": 0.7, "cpu_percent": 0.6, "handle_count": 0.3}})
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/simulate/ransomware":
-            result = process_event("filesystem", {"type": "RANSOMWARE_BURST", "process_name": body.get("name", "locker.exe"), "pid": body.get("pid", 0), "features": {"write_burst": 0.9, "extension_entropy": 0.8, "rename_count": 0.7, "delete_count": 0.3, "file_count": 0.5}})
+            result = process_event("filesystem", {"type": "RANSOMWARE_BURST", "process_name": body.get("name", "locker.exe"), "pid": body.get("pid", 0), "write_burst": 0.9, "extension_entropy": 0.8, "rename_count": 0.7, "features": {"write_burst": 0.9, "extension_entropy": 0.8, "rename_count": 0.7, "delete_count": 0.3, "file_count": 0.5}})
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/settings":
             self._json_response({"ok": True})
