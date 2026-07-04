@@ -81,9 +81,9 @@ FEATURE_NAMES = {
 class AnomalyEngine:
     def __init__(self):
         self.models = {}
-        self.explainers = {}
         self.sample_counts = {}
         self.baseline_buffer = defaultdict(list)
+        self.feature_importances = {}
 
     def update(self, pillar, features):
         if pillar not in self.sample_counts:
@@ -128,11 +128,12 @@ class AnomalyEngine:
         model.fit(x)
         self.models[pillar] = model
 
-        try:
-            import shap
-            self.explainers[pillar] = shap.TreeExplainer(model)
-        except Exception:
-            self.explainers[pillar] = None
+        importances = np.mean([tree.feature_importances_ for tree in model.estimators_], axis=0)
+        self.feature_importances[pillar] = {
+            name: round(float(importances[i]), 4)
+            for i, name in enumerate(feature_names)
+            if i < len(importances)
+        }
 
     def _score(self, pillar, x):
         model = self.models[pillar]
@@ -142,21 +143,13 @@ class AnomalyEngine:
         score_normalized = max(0.0, min(100.0, (0.5 - raw_score) * 200))
 
         shap_dict = {}
-        if pillar in self.explainers and self.explainers[pillar] is not None:
-            try:
-                sv = self.explainers[pillar].shap_values(x)
-                feature_names = FEATURE_NAMES.get(pillar, [])
-                if isinstance(sv, np.ndarray):
-                    vals = sv[0] if sv.ndim == 2 else sv.flatten()
-                elif isinstance(sv, list):
-                    vals = np.array(sv[0]) if sv else np.zeros(len(feature_names))
-                else:
-                    vals = np.zeros(len(feature_names))
-                for i, name in enumerate(feature_names):
-                    if i < len(vals):
-                        shap_dict[name] = round(float(vals[i]), 4)
-            except Exception:
-                pass
+        importances = self.feature_importances.get(pillar, {})
+        feature_names = FEATURE_NAMES.get(pillar, [])
+        sample = x[0] if len(x) > 0 else np.zeros(len(feature_names))
+        for i, name in enumerate(feature_names):
+            if i < len(sample) and name in importances:
+                contribution = abs(float(sample[i])) * importances[name]
+                shap_dict[name] = round(contribution, 4)
 
         return {
             "anomaly_score": round(score_normalized, 2),
