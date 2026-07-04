@@ -19,10 +19,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      const latest = messages[0]
-      if (latest.type === 'alert') {
-        setAlerts((prev) => [latest.data, ...prev.slice(0, 9)])
-      }
+      setAlerts(prev => {
+        const existing = new Set(prev.map(a => a.id))
+        const newAlerts = messages.filter(a => !existing.has(a.id))
+        return [...newAlerts, ...prev].slice(0, 10)
+      })
     }
   }, [messages])
 

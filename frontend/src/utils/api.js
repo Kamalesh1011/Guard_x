@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001'
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 async function request(path, options = {}) {
   const url = `${API_BASE}${path}`
@@ -29,5 +29,6 @@ export const api = {
   killProcess: (pid) => request('/api/actions/kill', { method: 'POST', body: JSON.stringify({ pid }) }),
   dismissAlert: (id) => request('/api/actions/dismiss', { method: 'POST', body: JSON.stringify({ alert_id: id }) }),
   getStats: () => request('/api/stats'),
+  simulateEvent: (data) => request('/api/simulate', { method: 'POST', body: JSON.stringify(data) }),
   exportCsv: () => `${API_BASE}/api/export/csv`,
 }
