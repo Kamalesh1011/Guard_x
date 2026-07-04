@@ -181,26 +181,35 @@ def explain_mic_event(event, shap_values, anomaly_score):
 def explain_process_event(event, shap_values, anomaly_score):
     proc = event.get("process_name", "unknown")
     risk_factors = []
+    has_shap = bool(shap_values)
 
     signals = {
-        "is_unsigned": "The process lacks a valid digital signature. Unsigned executables are a primary indicator of malware.",
-        "from_temp": "The process is executing from a temporary directory. This is a common malware evasion technique.",
-        "parent_child_pair": "The process was spawned by an unexpected parent. This parent-child anomaly often indicates script-based malware execution.",
-        "has_window": "The process has no visible user interface, suggesting it is designed to run silently in the background.",
-        "encoded_cmdline": "The command line contains encoded content. Attackers encode commands to bypass security tools.",
+        "is_unsigned": ("The process lacks a valid digital signature. Unsigned executables are a primary indicator of malware.", "T1059", "HIGH"),
+        "from_temp": ("The process is executing from a temporary directory. This is a common malware evasion technique.", "T1059", "HIGH"),
+        "parent_child_pair": ("The process was spawned by an unexpected parent. This parent-child anomaly often indicates script-based malware execution.", "T1059", "HIGH"),
+        "has_window": ("The process has no visible user interface, suggesting it is designed to run silently in the background.", "T1059", "MEDIUM"),
+        "encoded_cmdline": ("The command line contains encoded content. Attackers encode commands to bypass security tools.", "T1059", "HIGH"),
     }
 
-    for key, detail in signals.items():
-        val = shap_values.get(key, 0)
-        if val > 0.1:
-            risk_factors.append({"factor": key.replace("_", " ").title(), "contribution": val, "detail": detail, "ttp": "T1059", "risk_level": "HIGH"})
+    for key, (detail, ttp, risk) in signals.items():
+        if has_shap:
+            val = shap_values.get(key, 0)
+            if val > 0.1:
+                risk_factors.append({"factor": key.replace("_", " ").title(), "contribution": val, "detail": detail, "ttp": ttp, "risk_level": risk})
+        else:
+            val = event.get(key, False)
+            if val is True or val == 1:
+                risk_factors.append({"factor": key.replace("_", " ").title(), "contribution": 0.8, "detail": detail, "ttp": ttp, "risk_level": risk})
 
-    cpu = shap_values.get("cpu_percent", 0)
-    mem = shap_values.get("memory_usage", 0)
-    if cpu > 0.4:
-        risk_factors.append({"factor": "CPU Anomaly", "contribution": cpu, "detail": "Abnormal CPU usage detected. This may indicate cryptomining, brute-force attacks, or payload execution.", "ttp": "T1496", "risk_level": "MEDIUM"})
-    if mem > 0.4:
-        risk_factors.append({"factor": "Memory Anomaly", "contribution": mem, "detail": "Abnormal memory consumption suggests possible code injection, credential dumping, or reflective DLL loading.", "ttp": "T1055", "risk_level": "HIGH"})
+    cpu = shap_values.get("cpu_percent", event.get("cpu_percent", 0))
+    mem = shap_values.get("memory_usage", event.get("memory_usage", 0))
+    if (has_shap and cpu > 0.4) or (not has_shap and event.get("cpu_percent", 0) > 0.4):
+        risk_factors.append({"factor": "CPU Anomaly", "contribution": cpu or 0.7, "detail": "Abnormal CPU usage detected. This may indicate cryptomining, brute-force attacks, or payload execution.", "ttp": "T1496", "risk_level": "MEDIUM"})
+    if (has_shap and mem > 0.4) or (not has_shap and event.get("memory_usage", 0) > 0.4):
+        risk_factors.append({"factor": "Memory Anomaly", "contribution": mem or 0.7, "detail": "Abnormal memory consumption suggests possible code injection, credential dumping, or reflective DLL loading.", "ttp": "T1055", "risk_level": "HIGH"})
+
+    if not risk_factors:
+        risk_factors.append({"factor": "Anomalous Behavior", "contribution": 0.5, "detail": "This process exhibited behavior inconsistent with normal system activity. It may be unauthorized or compromised.", "ttp": "T1059", "risk_level": "MEDIUM"})
 
     summary = f"Suspicious process detected: {proc}."
     if risk_factors: summary += f" {len(risk_factors)} risk indicators identified."
@@ -213,24 +222,34 @@ def explain_process_event(event, shap_values, anomaly_score):
 def explain_ransomware_event(event, shap_values, anomaly_score):
     proc = event.get("process_name", "unknown")
     risk_factors = []
+    has_shap = bool(shap_values)
 
-    write_burst = shap_values.get("write_burst", 0)
-    ext_change = shap_values.get("extension_entropy", 0)
-    rename_count = shap_values.get("rename_count", 0)
+    indicators = [
+        ("write_burst", "Rapid File Encryption", "Rapid file modification in short timeframes is the primary behavioral indicator of ransomware encryption.", "T1486", "CRITICAL"),
+        ("extension_entropy", "File Extension Tampering", "Files being renamed with unknown extensions (e.g., .locked, .encrypted, .crypto) confirms active encryption.", "T1486", "CRITICAL"),
+        ("rename_count", "Mass File Renaming", "Ransom notes being dropped in multiple directories indicates the encryption phase is complete.", "T1486", "CRITICAL"),
+        ("delete_count", "Mass File Deletion", "Large-scale file deletion suggests the attacker is destroying backups or original files after encryption.", "T1485", "CRITICAL"),
+    ]
 
-    if write_burst > 0.3:
-        risk_factors.append({"factor": "Rapid File Encryption", "contribution": write_burst, "detail": "Rapid file modification in short timeframes is the primary behavioral indicator of ransomware encryption.", "ttp": "T1486", "risk_level": "CRITICAL"})
-    if ext_change > 0.3:
-        risk_factors.append({"factor": "File Extension Tampering", "contribution": ext_change, "detail": "Files being renamed with unknown extensions (e.g., .locked, .encrypted, .crypto) confirms active encryption.", "ttp": "T1486", "risk_level": "CRITICAL"})
-    if rename_count > 0.3:
-        risk_factors.append({"factor": "Mass File Renaming", "contribution": rename_count, "detail": "Ransom notes being dropped in multiple directories indicates the encryption phase is complete.", "ttp": "T1486", "risk_level": "CRITICAL"})
+    for key, factor_name, detail, ttp, risk in indicators:
+        if has_shap:
+            val = shap_values.get(key, 0)
+            if val > 0.3:
+                risk_factors.append({"factor": factor_name, "contribution": val, "detail": detail, "ttp": ttp, "risk_level": risk})
+        else:
+            val = event.get(key, 0)
+            if isinstance(val, (int, float)) and val > 0.3:
+                risk_factors.append({"factor": factor_name, "contribution": val, "detail": detail, "ttp": ttp, "risk_level": risk})
+
+    if not risk_factors:
+        risk_factors.append({"factor": "Ransomware Behavior Detected", "contribution": 0.9, "detail": "Filesystem activity matches known ransomware patterns: rapid writes, extension changes, and mass renaming.", "ttp": "T1486", "risk_level": "CRITICAL"})
 
     summary = f"Ransomware behavior detected from {proc}."
     if risk_factors: summary += f" {len(risk_factors)} encryption indicators active."
 
     recommendation = "DISCONNECT FROM THE NETWORK IMMEDIATELY. Do not restart the computer. Check for ransom notes in affected directories. Use ransomware decryption tools from nomoreransom.org if available. Report to your security team."
 
-    return {"summary": summary, "risk_factors": risk_factors, "total_risk_score": round(sum(abs(rf["contribution"]) for rf in risk_factors), 2), "severity": "CRITICAL", "recommendation": recommendation, "mitre_ttps": ["T1486"], "threat_context": "Ransomware is the most destructive form of malware. Immediate isolation is critical."}
+    return {"summary": summary, "risk_factors": risk_factors, "total_risk_score": round(sum(abs(rf["contribution"]) for rf in risk_factors), 2), "severity": "CRITICAL", "recommendation": recommendation, "mitre_ttps": list(set(rf["ttp"] for rf in risk_factors)), "threat_context": "Ransomware is the most destructive form of malware. Immediate isolation is critical."}
 
 
 EXPLAINERS = {
