@@ -419,7 +419,7 @@ class handler(BaseHTTPRequestHandler):
             result = process_event(pillar, event)
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/simulate/camera":
-            result = process_event("hardware", {"type": "CAMERA_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": False, "is_signed": True, "app_is_known": False, "features": {"is_first_time": 1.0, "is_background": 0.0, "is_signed": 1.0, "app_is_known": 0.0}})
+            result = process_event("hardware", {"type": "CAMERA_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": False, "is_signed": True, "app_is_known": False, "watcher": "HardwareWatcher", "features": {"is_first_time": 1.0, "is_background": 0.0, "is_signed": 1.0, "app_is_known": 0.0}})
             self._json_response({"processed": result is not None, "alert": result})
         elif path == "/api/simulate/mic":
             result = process_event("hardware", {"type": "MIC_ACCESS", "process_name": body.get("app", "unknown.exe"), "pid": body.get("pid", 0), "is_first_time": True, "is_background": True, "is_signed": True, "app_is_known": False, "watcher": "HardwareWatcher", "features": {"is_first_time": 1.0, "is_background": 1.0, "is_signed": 1.0, "app_is_known": 0.0}})
