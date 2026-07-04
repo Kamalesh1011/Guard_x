@@ -10,10 +10,14 @@ const WATCHER_CONFIG = {
 }
 
 export default function WatcherStatus({ watchers = {} }) {
+  const watchSet = Array.isArray(watchers)
+    ? new Set(watchers)
+    : new Set(Object.entries(watchers).filter(([, v]) => v === true || v === 'true').map(([k]) => k))
+
   return (
     <div className="space-y-3">
       {Object.entries(WATCHER_CONFIG).map(([key, { icon: Icon, label }]) => {
-        const active = watchers[key] === true || watchers[key] === 'true'
+        const active = watchSet.has(key)
         return (
           <div key={key} className="flex items-center gap-3">
             <div
