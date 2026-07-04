@@ -398,7 +398,20 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         if path == "/api/status":
-            self._json_response({"status": "online", "uptime": time.time(), "version": "2.0.0", "watchers": ["process", "network", "hardware", "filesystem", "idle"], "anomaly_engine": "active", "model_status": {p: {"trained": p in anomaly_engine.models, "samples": anomaly_engine.sample_counts.get(p, 0)} for p in FEATURE_NAMES}})
+            active = [a for a in store.alerts if not a.get("dismissed")]
+            threat = "SAFE"
+            for alert in active:
+                sev = alert.get("severity", "SAFE")
+                if sev == "CRITICAL":
+                    threat = "CRITICAL"
+                    break
+                elif sev == "HIGH" and threat != "CRITICAL":
+                    threat = "HIGH"
+                elif sev == "MEDIUM" and threat not in ("CRITICAL", "HIGH"):
+                    threat = "MEDIUM"
+                elif sev == "LOW" and threat not in ("CRITICAL", "HIGH", "MEDIUM"):
+                    threat = "LOW"
+            self._json_response({"status": "online", "uptime": time.time(), "version": "2.0.0", "threat_level": threat, "watchers": ["process", "network", "hardware", "filesystem", "idle"], "anomaly_engine": "active", "model_status": {p: {"trained": p in anomaly_engine.models, "samples": anomaly_engine.sample_counts.get(p, 0)} for p in FEATURE_NAMES}})
         elif path == "/api/alerts":
             self._json_response(store.get_alerts(limit=50))
         elif path == "/api/hardware":

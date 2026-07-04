@@ -83,15 +83,22 @@ def create_app(agent=None):
         if not agent:
             return {"status": "no agent"}
         stats = agent.db.get_alert_stats()
+
+        recent_alerts = agent.db.get_alerts(limit=50)
+        active_alerts = [a for a in recent_alerts if not a.get("dismissed")]
+
         threat = "SAFE"
-        if stats.get("CRITICAL", 0) > 0:
-            threat = "CRITICAL"
-        elif stats.get("HIGH", 0) > 0:
-            threat = "HIGH"
-        elif stats.get("MEDIUM", 0) > 0:
-            threat = "MEDIUM"
-        elif stats.get("LOW", 0) > 0:
-            threat = "LOW"
+        for alert in active_alerts:
+            sev = alert.get("severity", "SAFE")
+            if sev == "CRITICAL":
+                threat = "CRITICAL"
+                break
+            elif sev == "HIGH" and threat != "CRITICAL":
+                threat = "HIGH"
+            elif sev == "MEDIUM" and threat not in ("CRITICAL", "HIGH"):
+                threat = "MEDIUM"
+            elif sev == "LOW" and threat not in ("CRITICAL", "HIGH", "MEDIUM"):
+                threat = "LOW"
 
         elapsed = time.time() - agent._start_time if hasattr(agent, "_start_time") else 0
         hours = int(elapsed // 3600)
