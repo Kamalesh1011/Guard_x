@@ -44,8 +44,9 @@ class Database:
             cursor = conn.execute(
                 """INSERT INTO alerts
                    (type, process_name, pid, severity, summary, reasons,
-                    shap_values, recommendation, raw_event)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    shap_values, risk_factors, mitre_ttps, total_risk_score,
+                    recommendation, raw_event)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     event.get("type", ""),
                     event.get("process_name"),
@@ -54,6 +55,9 @@ class Database:
                     event.get("summary"),
                     json.dumps(event.get("reasons", [])),
                     json.dumps(event.get("shap_values", {})),
+                    json.dumps(event.get("risk_factors", [])),
+                    json.dumps(event.get("mitre_ttps", [])),
+                    event.get("total_risk_score", 0),
                     event.get("recommendation"),
                     json.dumps(event),
                 ),

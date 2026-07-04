@@ -15,7 +15,7 @@ from agent.voice.speaker import JarvisVoice
 from agent.detection.anomaly_engine import AnomalyEngine
 from agent.detection.rule_engine import RuleEngine
 from agent.detection.threat_classifier import classify
-from agent.explainer.xai_engine import XAIEngine
+from agent.explainer.xai_engine import explain as xai_explain
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +40,7 @@ class GuardianAgent:
 
         self.anomaly_engine = AnomalyEngine(self.db, config)
         self.rule_engine = RuleEngine(config)
-        self.xai_engine = XAIEngine(config)
+        self.xai_explain = xai_explain
 
         self._load_settings()
 
@@ -79,18 +79,40 @@ class GuardianAgent:
         severity = event.get("severity", "SAFE")
         if severity == "SAFE":
             return
+
+        event_type = event.get("type", "")
+        proc = event.get("process_name", "unknown")
+        risk_factors = event.get("risk_factors", [])
         summary = event.get("summary", "")
-        rec = event.get("recommendation", "")
+        recommendation = event.get("recommendation", "")
+        mitre = event.get("mitre_ttps", [])
+
+        prefix = ""
         if severity == "CRITICAL":
-            text = f"Critical alert. {summary} {rec}"
+            prefix = "Critical threat detected. "
         elif severity == "HIGH":
-            text = f"Attention. {summary} {rec}"
-        elif severity in ("MEDIUM", "LOW"):
-            text = f"Heads up. {summary}"
+            prefix = "Security alert. "
+        elif severity == "MEDIUM":
+            prefix = "Warning. "
         else:
-            return
-        logger.info(f"Speaking: {text[:80]}...")
-        self.voice.speak_raw(text)
+            prefix = "Notice. "
+
+        voice_text = prefix + summary + " "
+
+        if risk_factors:
+            top_risks = sorted(risk_factors, key=lambda x: abs(x.get("contribution", 0)), reverse=True)[:3]
+            for rf in top_risks:
+                voice_text += rf.get("detail", "") + " "
+
+        if mitre:
+            voice_text += f"MITRE techniques detected: {', '.join(mitre[:2])}. "
+
+        voice_text += recommendation
+
+        voice_text = voice_text[:500]
+
+        logger.info(f"Speaking: {voice_text[:120]}...")
+        self.voice.speak_raw(voice_text)
 
     def start_watchers(self):
         from agent.watchers.process_watcher import ProcessWatcher
@@ -151,7 +173,7 @@ class GuardianAgent:
             if severity == "SAFE":
                 continue
 
-            explanation = self.xai_engine.explain(event, anomaly_result)
+            explanation = self.xai_explain(event, anomaly_result)
             event.update(explanation)
 
             self.store_and_broadcast(event)
