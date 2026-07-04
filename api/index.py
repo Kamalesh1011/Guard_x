@@ -316,10 +316,24 @@ class RuleEngine:
             {"name": "suspicious_port", "field": "is_suspicious_port", "op": "==", "value": True, "severity": "HIGH"},
             {"name": "first_time_camera", "field": "is_first_time", "op": "==", "value": True, "watcher": "HardwareWatcher", "severity": "HIGH"},
             {"name": "first_time_mic", "field": "is_first_time", "op": "==", "value": True, "watcher": "HardwareWatcher", "severity": "HIGH"},
+            {"name": "write_burst", "field": "write_burst", "op": ">", "value": 0.5, "severity": "CRITICAL"},
+            {"name": "extension_entropy", "field": "extension_entropy", "op": ">", "value": 0.5, "severity": "CRITICAL"},
+            {"name": "is_unsigned", "field": "is_unsigned", "op": "==", "value": True, "severity": "HIGH"},
+            {"name": "from_temp", "field": "from_temp", "op": "==", "value": True, "severity": "HIGH"},
+            {"name": "parent_child_pair", "field": "parent_child_pair", "op": "==", "value": True, "severity": "HIGH"},
         ]
 
     def match(self, event):
-        return [r for r in self.rules if ("watcher" not in r or event.get("watcher") == r["watcher"]) and event.get(r["field"]) == r["value"]]
+        matches = []
+        for r in self.rules:
+            watcher_match = "watcher" not in r or event.get("watcher") == r["watcher"]
+            field_val = event.get(r["field"])
+            if watcher_match and field_val is not None:
+                if r["op"] == "==" and field_val == r["value"]:
+                    matches.append(r)
+                elif r["op"] == ">" and isinstance(field_val, (int, float)) and field_val > r["value"]:
+                    matches.append(r)
+        return matches
 
 
 def classify(anomaly_result, rule_matches):
@@ -345,11 +359,17 @@ def process_event(pillar, event):
     anomaly_result = anomaly_engine.update(pillar, features)
     rule_matches = rule_engine.match(event)
     severity = classify(anomaly_result, rule_matches)
-    if severity == "SAFE":
+
+    if severity == "SAFE" and not rule_matches:
         return None
+
+    if severity == "SAFE" and rule_matches:
+        severity = "HIGH"
+
     event["severity"] = severity
     explanation = explain_event(event, anomaly_result)
     event.update(explanation)
+
     alert_id = store.add_alert(event)
     event["id"] = alert_id
     return event
